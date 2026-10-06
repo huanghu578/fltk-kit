@@ -104,7 +104,7 @@ table_area.apply_to(&mut table);
 Rect::apply_all(&[rect1, rect2], &mut [&mut w1, &mut w2]);
 关键点：Rect 本身不依赖 FLTK，apply_to 定义在 RectExt trait 上，所以 core::rect 保持纯净。
 
-2. AutoPage — 自动布局的页面
+### 2. AutoPage — 自动布局的页面
 AutoPage 封装一个 Group 和一个布局闭包。窗口缩放或页面切换时，调用 relayout 自动重排。
 
 rust
@@ -142,7 +142,7 @@ wind.resize_callback(move |_, _, _, w, h| {
 });
 关键点：on_layout 接受 FnMut(Rect)，因为布局闭包通常要 apply_to(&mut widget)。闭包捕获的控件句柄要声明为 mut，因为 apply_to 需要可变借用。
 
-3. Fonts — 三级优先级的字体选择
+### 3. Fonts — 三级优先级的字体选择
 按 用户指定 > 系统语言 > 兜底 的顺序找字体。
 
 rust
@@ -172,7 +172,8 @@ if let Some((name, _font)) = Fonts::find_first(&["Consolas", "Monaco"]) {
 if Fonts::is_available("Microsoft YaHei") {
     // ...
 }
-4. Icon — 窗口图标与图像
+
+### 4. Icon — 窗口图标与图像  
 从嵌入字节、Base64、文件路径加载图标或图像。所有 setter 返回 bool，失败时返回 false 而不 panic。
 
 rust
@@ -192,7 +193,8 @@ if let Some(img) = Icon::rgb_from_base64(b64) {
     let scaled = Icon::scale_rgb(img, 400, 300, true);
     frame.set_image(Some(scaled));
 }
-5. Dialogs — 居中弹窗
+
+### 5. Dialogs — 居中弹窗
 所有弹窗以母窗口为中心（不是屏幕）。传窗口引用即可。
 
 rust
@@ -232,7 +234,7 @@ if let Some(dir) = Dialogs::dir_center("选择工作文件夹") {
 }
 关键点：Dialogs 用 win.x_root() 和 win.y_root() 获取窗口在屏幕上的位置，加上窗口尺寸计算对话框中心。这样多显示器、窗口拖动后都能正确居中。
 
-6. TreeHelper / TableHelper — 控件辅助
+### 6. TreeHelper / TableHelper — 控件辅助
 TreeHelper：
 
 rust
@@ -271,7 +273,8 @@ TableHelper::set_headers(&mut table, &["列1", "列2", "列3"]);
 
 // 清空
 TableHelper::clear(&mut table);
-7. Windows — 窗口创建
+
+### 7. Windows — 窗口创建
 rust
 use fltk_kit::Windows;
 
@@ -283,7 +286,8 @@ Windows::show_maximized(&mut wind);
 
 // 设置最小尺寸
 Windows::set_min_size(&mut wind, 400, 300);
-8. Shortcuts — 快捷键
+
+### 8. Shortcuts — 快捷键
 按钮快捷键：
 
 rust
@@ -301,7 +305,7 @@ mgr.register(Shortcuts::ctrl_o(), move || { /* 打开文件 */ });
 mgr.attach(&mut wind);
 预定义常量：f1() ~ f12()、ctrl_a() ~ ctrl_z()、ctrl_shift_s()、esc()、enter()、delete()、backspace()、alt(Key)、func(Key)。
 
-9. Channel — 工作线程 → UI 线程
+### 9. Channel — 工作线程 → UI 线程
 FLTK 是单线程 UI，工作线程不能直接更新控件。Channel 封装了标准的 mpsc + 定时轮询模式。
 
 rust
@@ -331,7 +335,7 @@ send_or_warn 失败时打印警告，不 panic。
 
 spawn_poll_with_handle 返回 AsyncHandle，可手动 stop()。
 
-10. Task — 高级后台任务
+### 10. Task — 高级后台任务
 Task::run 把"启动线程 + 发送结果 + UI 更新"合并成一次调用。
 
 rust
@@ -376,7 +380,7 @@ work 闭包返回的数据必须 Send。
 
 on_done 里不做重活，否则会卡 UI。
 
-四、典型使用流程
+## 四、典型使用流程
 主程序骨架
 rust
 use fltk::{app, prelude::*, window::Window};
@@ -435,7 +439,8 @@ btn_export.set_callback(move |_| {
         },
     );
 });
-五、示例程序
+
+## 五、示例程序
 examples/ 目录下有 12 个示例，每个演示一个模块：
 
 示例	演示内容
