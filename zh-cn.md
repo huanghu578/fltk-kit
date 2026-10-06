@@ -18,28 +18,29 @@
 
 ## 二、模块结构
 
-库分为三层，依赖关系清晰：
+库分为三层，依赖关系清晰：  
+
 fltk-kit
-├── core ← 纯逻辑，不依赖 FLTK
-│ ├── rect 几何计算（矩形切分、对齐、按钮排列）
-│ ├── theme 通用常量（间距、尺寸、字号）
-│ ├── text 文本处理（截断、字节格式化、千分位）
-│ └── paths 路径辅助（exe 目录、纯文件名、纯文件夹名）
-│
-├── widget ← FLTK 控件辅助
-│ ├── fonts 字体选择（用户 > 系统语言 > 兜底，三级优先级）
-│ ├── icon 窗口图标与图像加载（PNG/ICO/Base64/字节）
-│ ├── dialogs 居中弹窗与文件选择器
-│ ├── auto_page 自动缩放的页面容器
-│ ├── layout_ext Rect 到 FLTK 控件的桥接（RectExt trait）
-│ ├── tree Tree 控件辅助
-│ ├── table SmartTable 辅助
-│ ├── windows 窗口创建与最大化
-│ └── shortcuts 快捷键常量与全局管理器
-│
-└── async_kit ← 异步与多线程
-├── channel 工作线程 → UI 线程的消息通道
-└── task 后台任务（含取消）
+├── core ← 纯逻辑，不依赖 FLTK  
+│ ├── rect 几何计算（矩形切分、对齐、按钮排列）  
+│ ├── theme 通用常量（间距、尺寸、字号）  
+│ ├── text 文本处理（截断、字节格式化、千分位）  
+│ └── paths 路径辅助（exe 目录、纯文件名、纯文件夹名）  
+│  
+├── widget ← FLTK 控件辅助  
+│ ├── fonts 字体选择（用户 > 系统语言 > 兜底，三级优先级）  
+│ ├── icon 窗口图标与图像加载（PNG/ICO/Base64/字节）  
+│ ├── dialogs 居中弹窗与文件选择器  
+│ ├── auto_page 自动缩放的页面容器  
+│ ├── layout_ext Rect 到 FLTK 控件的桥接（RectExt trait）  
+│ ├── tree Tree 控件辅助  
+│ ├── table SmartTable 辅助  
+│ ├── windows 窗口创建与最大化  
+│ └── shortcuts 快捷键常量与全局管理器  
+│  
+└── async_kit ← 异步与多线程  
+├── channel 工作线程 → UI 线程的消息通道  
+└── task 后台任务（含取消）  
 
 text
 
