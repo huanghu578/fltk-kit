@@ -104,13 +104,23 @@ page.relayout(win_w, win_h - 30);
 
 ## Background work
 
-`Channel` moves values from a worker thread to the UI thread. `Task` wraps the
-common pattern of "spawn a thread, send the result, update the UI".
+FLTK is single-threaded: all UI updates must happen on the main thread. `fltk-kit`
+provides two levels of abstraction for moving values from a worker thread back
+to the UI:
+
+- **`Channel`** — low-level: create a channel, spawn a worker, poll on the UI thread.
+- **`Task`** — high-level: run a closure on a worker thread and deliver the
+  result to a UI callback. Supports cancellation.
+
+### `Channel` — low-level
+
+`Channel::spawn_poll` creates an `mpsc` channel, starts a polling loop on the
+UI thread, and returns a `Sender`. Send values from any worker thread; the
+callback runs on the UI thread.
 
 ```rust
-use fltk_kit::{Channel, Task};
+use fltk_kit::Channel;
 
-// Low-level channel
 let tx = Channel::spawn_poll(0.1, move |records: Vec<Record>| {
     ui.borrow_mut().show_records(&records);
 });
@@ -119,16 +129,37 @@ std::thread::spawn(move || {
     let records = load_records();
     tx.send_or_warn(records);
 });
+```
 
-// Higher-level task
+- Polling stops automatically when all `Sender` clones are dropped.
+- `send()` returns `Result<(), T>` — the message is returned on failure.
+- `send_or_warn()` prints a warning and drops the message.
+- Use `spawn_poll_with_handle` if you need an `AsyncHandle` to stop early.
+
+### `Task` — high-level
+
+`Task::run` combines "spawn a worker thread" and "deliver the result to the UI
+thread" into one call.
+
+```rust
+use fltk_kit::Task;
+
 Task::run(
-    0.1,
-    || load_records(),
-    move |records| ui.borrow_mut().show_records(&records),
+    0.1,                                         // polling interval (seconds)
+    || load_records(),                           // worker thread
+    move |records| {                             // UI thread callback
+        ui.borrow_mut().show_records(&records);
+    },
 );
 ```
 
-Long-running tasks can be cancelled:
+`Task::run` returns immediately. The worker closure runs on a new thread; when
+it finishes, the result is passed to the UI callback on the main thread.
+
+### Cancellation
+
+`Task::run_cancellable` returns a `CancelToken` that the worker can check
+periodically. Call `token.cancel()` from the UI thread to request cancellation.
 
 ```rust
 use fltk_kit::{Task, CancelToken};
@@ -138,7 +169,9 @@ let token = Task::run_cancellable(
     |cancel: &CancelToken| {
         let mut out = Vec::new();
         for i in 0..1000 {
-            if cancel.is_cancelled() { break; }
+            if cancel.is_cancelled() {
+                break;
+            }
             out.push(heavy_step(i));
         }
         out
@@ -146,9 +179,23 @@ let token = Task::run_cancellable(
     move |out| ui.borrow_mut().show_records(&out),
 );
 
-// Later, on the UI thread:
+// Later, on the UI thread (e.g. from a "Cancel" button):
 token.cancel();
 ```
+
+The worker only stops when it *checks* `is_cancelled()`. For long loops, check
+it every iteration or every N iterations. For blocking I/O, the check has to
+happen between I/O calls.
+
+### `Channel` vs `Task`
+
+| Use case | API |
+|---|---|
+| Simple "run and forget" computation | `Task::run` |
+| Long computation the user may cancel | `Task::run_cancellable` |
+| Streaming multiple values over time | `Channel::spawn_poll` |
+| Multiple producers, one consumer | `Channel::spawn_poll` (clone the `Sender`) |
+| Fine-grained control (start/stop) | `Channel::spawn_poll_with_handle` |
 
 ## Font selection
 
