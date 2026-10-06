@@ -9,7 +9,7 @@ use crate::core::rect::Rect;
 
 pub struct AutoPage {
     group: Group,
-    layout_fn: Rc<RefCell<Option<Box<dyn Fn(Rect)>>>>,
+    layout_fn: Rc<RefCell<Option<Box<dyn FnMut(Rect)>>>>,
     content_top: i32,
     pad: i32,
 }
@@ -49,7 +49,9 @@ impl AutoPage {
     }
 
     /// Register a layout closure. It runs on every `relayout`.
-    pub fn on_layout<F: Fn(Rect) + 'static>(&mut self, f: F) {
+    ///
+    /// Accepts `FnMut` so the closure may mutate captured widget handles.
+    pub fn on_layout<F: FnMut(Rect) + 'static>(&mut self, f: F) {
         *self.layout_fn.borrow_mut() = Some(Box::new(f));
     }
 
@@ -65,7 +67,7 @@ impl AutoPage {
             (g.h() - self.content_top - self.pad).max(0),
         );
 
-        if let Some(f) = self.layout_fn.borrow().as_ref() {
+        if let Some(f) = self.layout_fn.borrow_mut().as_mut() {
             f(content);
         }
     }

@@ -22,6 +22,7 @@ pub use crate::widget::tree::TreeHelper;
 pub use crate::widget::table::TableHelper;
 pub use crate::widget::windows::Windows;
 pub use crate::widget::shortcuts::{Shortcuts, ShortcutManager};
+pub use crate::widget::layout_ext::RectExt;
 
 pub use crate::async_kit::channel::{Channel, Sender, AsyncHandle};
 pub use crate::async_kit::task::{Task, CancelToken};

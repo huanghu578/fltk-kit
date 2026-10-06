@@ -2,6 +2,7 @@ pub mod fonts;
 pub mod icon;
 pub mod dialogs;
 pub mod auto_page;
+pub mod layout_ext;
 pub mod tree;
 pub mod table;
 pub mod windows;
