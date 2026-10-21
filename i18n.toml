@@ -1,0 +1,13 @@
+current = "zh-CN"
+languages = [
+    "en",
+    "zh-CN",
+]
+
+[translations.zh-CN]
+"app.title" = "我的应用"
+hello = "你好"
+
+[translations.en]
+"app.title" = "My Application"
+hello = "Hello"

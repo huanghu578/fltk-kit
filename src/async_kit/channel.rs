@@ -1,151 +1,100 @@
-//! Channel from a worker thread to the FLTK UI thread.
+//! Thread-safe channels for delivering values from worker threads to the
+//! FLTK UI thread.
 //!
-//! Wraps the standard `mpsc` + `add_timeout3` + `try_recv` pattern,
-//! including panic protection and automatic shutdown when senders drop.
+//! FLTK is single-threaded: all widget updates must happen on the main
+//! thread. `Channel` wraps `std::sync::mpsc` and provides a polling loop
+//! driven by `fltk::app::add_timeout3`, so callbacks always run on the UI
+//! thread.
 
-use std::cell::RefCell;
-use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::rc::Rc;
-use std::sync::mpsc::{self, Receiver, SendError, Sender as MpscSender, TryRecvError};
-
+use std::sync::mpsc::{channel as std_channel, Receiver, Sender as StdSender};
 use fltk::app;
 
-pub struct Channel;
-
-impl Channel {
-    /// Create a channel and start polling. Returns the sender.
-    pub fn spawn_poll<T, F>(interval_sec: f64, on_msg: F) -> Sender<T>
-    where
-        T: 'static,
-        F: FnMut(T) + 'static,
-    {
-        Self::spawn_poll_with_handle(interval_sec, on_msg).0
-    }
-
-    /// Like `spawn_poll` but also returns a handle for manual stop.
-    pub fn spawn_poll_with_handle<T, F>(
-        interval_sec: f64,
-        on_msg: F,
-    ) -> (Sender<T>, AsyncHandle)
-    where
-        T: 'static,
-        F: FnMut(T) + 'static,
-    {
-        let (tx, rx) = mpsc::channel::<T>();
-        let running = Rc::new(RefCell::new(true));
-        let rx = Rc::new(RefCell::new(rx));
-        let on_msg = Rc::new(RefCell::new(on_msg));
-
-        start_poll(rx, running.clone(), on_msg, interval_sec);
-
-        (Sender { inner: tx }, AsyncHandle { running })
-    }
-}
-
-/// The sending half of a channel. Cloneable.
-pub struct Sender<T> {
-    inner: MpscSender<T>,
-}
-
-impl<T> Sender<T> {
-    /// Send a message. Returns the message back on failure.
-    pub fn send(&self, msg: T) -> Result<(), T> {
-        self.inner.send(msg).map_err(|SendError(m)| m)
-    }
-
-    /// Send a message, printing a warning on failure.
-    pub fn send_or_warn(&self, msg: T) {
-        if self.inner.send(msg).is_err() {
-            eprintln!("[fltk-kit::channel] receiver closed, message dropped");
-        }
-    }
-}
+/// The sending half of a [`Channel`]. Clone freely; each clone is an
+/// independent producer.
+pub struct Sender<T>(StdSender<T>);
 
 impl<T> Clone for Sender<T> {
     fn clone(&self) -> Self {
-        Self { inner: self.inner.clone() }
+        Self(self.0.clone())
     }
 }
 
-/// Handle to stop a polling loop manually.
-pub struct AsyncHandle {
-    running: Rc<RefCell<bool>>,
-}
-
-impl AsyncHandle {
-    /// Stop the polling loop.
-    pub fn stop(&self) {
-        *self.running.borrow_mut() = false;
-    }
-
-    /// Whether the loop is still running.
-    pub fn is_running(&self) -> bool {
-        *self.running.borrow()
+impl<T> Sender<T> {
+    /// Send a value to the UI thread. Fails if the receiver has been
+    /// dropped (i.e. the polling loop has stopped).
+    pub fn send(&self, val: T) -> Result<(), std::sync::mpsc::SendError<T>> {
+        self.0.send(val)
     }
 }
 
-fn start_poll<T, F>(
-    rx: Rc<RefCell<Receiver<T>>>,
-    running: Rc<RefCell<bool>>,
-    on_msg: Rc<RefCell<F>>,
-    interval_sec: f64,
-) where
-    T: 'static,
-    F: FnMut(T) + 'static,
-{
-    fn poll<T, F>(
-        rx: Rc<RefCell<Receiver<T>>>,
-        running: Rc<RefCell<bool>>,
-        on_msg: Rc<RefCell<F>>,
-        interval_sec: f64,
-    ) where
-        T: 'static,
+/// The receiving half of a [`Channel`]. Owns the `Receiver` and drives
+/// the polling loop.
+pub struct Channel<T> {
+    receiver: Receiver<T>,
+}
+
+impl<T: Send + 'static> Channel<T> {
+    /// Creates a channel. Returns the sender and the channel itself.
+    ///
+    /// Call [`Channel::spawn_poll`] or [`Channel::spawn_poll_once`] on the
+    /// returned channel to start delivering messages to the UI thread.
+    pub fn new() -> (Sender<T>, Self) {
+        let (tx, rx) = std_channel();
+        (Sender(tx), Self { receiver: rx })
+    }
+
+    /// Polls the channel every `interval` seconds on the UI thread.
+    ///
+    /// `callback` runs for **every** message. Polling continues until all
+    /// `Sender` clones have been dropped, at which point it stops
+    /// automatically.
+    pub fn spawn_poll<F>(self, interval: f64, mut callback: F)
+    where
         F: FnMut(T) + 'static,
     {
-        if !*running.borrow() {
-            return;
-        }
-
-        let mut disconnected = false;
-
-        loop {
-            let msg = {
-                let rx_ref = rx.borrow();
-                match rx_ref.try_recv() {
-                    Ok(m) => m,
-                    Err(TryRecvError::Empty) => break,
-                    Err(TryRecvError::Disconnected) => {
-                        disconnected = true;
+        let receiver = self.receiver;
+        app::add_timeout3(interval, move |handle| {
+            let mut closed = false;
+            loop {
+                match receiver.try_recv() {
+                    Ok(msg) => callback(msg),
+                    Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        closed = true;
                         break;
                     }
                 }
-            };
-
-            let cb = on_msg.clone();
-            let _ = catch_unwind(AssertUnwindSafe(|| {
-                (cb.borrow_mut())(msg);
-            }));
-        }
-
-        if disconnected || !*running.borrow() {
-            *running.borrow_mut() = false;
-            return;
-        }
-
-        // Use add_timeout3 to avoid the deprecation warning.
-        // Its closure signature is FnMut(*mut ()). We ignore the handle.
-        let rx_c = rx.clone();
-        let running_c = running.clone();
-        let on_msg_c = on_msg.clone();
-        app::add_timeout3(interval_sec, move |_handle| {
-            poll(
-                rx_c.clone(),
-                running_c.clone(),
-                on_msg_c.clone(),
-                interval_sec,
-            );
+            }
+            if !closed {
+                app::repeat_timeout3(interval, handle);
+            }
+            // If closed, we simply don't repeat: the polling loop ends.
         });
     }
 
-    poll(rx, running, on_msg, interval_sec);
+    /// Polls the channel every `interval` seconds and invokes `callback`
+    /// **exactly once** with the first message received, then stops.
+    ///
+    /// If the `Sender` is dropped before any message arrives, the polling
+    /// loop also stops without invoking `callback`.
+    pub fn spawn_poll_once<F>(self, interval: f64, mut callback: F)
+    where
+        F: FnMut(T) + 'static,
+    {
+        let receiver = self.receiver;
+        app::add_timeout3(interval, move |handle| {
+            match receiver.try_recv() {
+                Ok(msg) => {
+                    callback(msg);
+                    // Do NOT repeat: one-shot delivery is complete.
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    app::repeat_timeout3(interval, handle);
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    // Sender dropped without sending: stop silently.
+                }
+            }
+        });
+    }
 }

@@ -1,130 +1,76 @@
-//! Shortcut constants and a global shortcut manager.
+//! Keyboard shortcut parsing and managing.
 
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
+use fltk::enums::{Key, Shortcut, EventState};
 
-use fltk::{
-    app,
-    enums::{Event, Key, Shortcut},
-    prelude::*,
-    window::Window,
-};
+/// Parses a string like `"Ctrl+S"` or `"Cmd+Shift+Z"` into an FLTK `Shortcut`.
+///
+/// Returns `None` if the string format is invalid.
+pub fn parse_shortcut(s: &str) -> Option<Shortcut> {
+    let mut key: Option<Key> = None;
+    let mut state = EventState::empty();
 
-pub struct Shortcuts;
-
-impl Shortcuts {
-    // Function keys
-    pub fn f1() -> Shortcut { Shortcut::from_key(Key::F1) }
-    pub fn f2() -> Shortcut { Shortcut::from_key(Key::F2) }
-    pub fn f3() -> Shortcut { Shortcut::from_key(Key::F3) }
-    pub fn f4() -> Shortcut { Shortcut::from_key(Key::F4) }
-    pub fn f5() -> Shortcut { Shortcut::from_key(Key::F5) }
-    pub fn f6() -> Shortcut { Shortcut::from_key(Key::F6) }
-    pub fn f7() -> Shortcut { Shortcut::from_key(Key::F7) }
-    pub fn f8() -> Shortcut { Shortcut::from_key(Key::F8) }
-    pub fn f9() -> Shortcut { Shortcut::from_key(Key::F9) }
-    pub fn f10() -> Shortcut { Shortcut::from_key(Key::F10) }
-    pub fn f11() -> Shortcut { Shortcut::from_key(Key::F11) }
-    pub fn f12() -> Shortcut { Shortcut::from_key(Key::F12) }
-
-    // Common combinations
-    pub fn ctrl_a() -> Shortcut { Self::ctrl('a') }
-    pub fn ctrl_c() -> Shortcut { Self::ctrl('c') }
-    pub fn ctrl_f() -> Shortcut { Self::ctrl('f') }
-    pub fn ctrl_n() -> Shortcut { Self::ctrl('n') }
-    pub fn ctrl_o() -> Shortcut { Self::ctrl('o') }
-    pub fn ctrl_p() -> Shortcut { Self::ctrl('p') }
-    pub fn ctrl_s() -> Shortcut { Self::ctrl('s') }
-    pub fn ctrl_v() -> Shortcut { Self::ctrl('v') }
-    pub fn ctrl_x() -> Shortcut { Self::ctrl('x') }
-    pub fn ctrl_y() -> Shortcut { Self::ctrl('y') }
-    pub fn ctrl_z() -> Shortcut { Self::ctrl('z') }
-
-    pub fn ctrl_shift_s() -> Shortcut { Self::ctrl_shift('s') }
-    pub fn ctrl_shift_z() -> Shortcut { Self::ctrl_shift('z') }
-
-    // Special keys
-    pub fn esc() -> Shortcut { Shortcut::from_key(Key::Escape) }
-    pub fn enter() -> Shortcut { Shortcut::from_key(Key::Enter) }
-    pub fn delete() -> Shortcut { Shortcut::from_key(Key::Delete) }
-    pub fn backspace() -> Shortcut { Shortcut::from_key(Key::BackSpace) }
-
-    pub fn func(key: Key) -> Shortcut {
-        Shortcut::from_key(key)
-    }
-
-    pub fn ctrl(ch: char) -> Shortcut {
-        Shortcut::Ctrl | Shortcut::from_key(Key::from_char(ch))
-    }
-
-    pub fn ctrl_shift(ch: char) -> Shortcut {
-        Shortcut::Ctrl | Shortcut::Shift | Shortcut::from_key(Key::from_char(ch))
-    }
-
-    pub fn alt(key: Key) -> Shortcut {
-        Shortcut::Alt | Shortcut::from_key(key)
-    }
-
-    /// Bind a shortcut to a button-like widget (acts as a click when pressed).
-    pub fn bind<T: WidgetExt + ButtonExt>(widget: &mut T, sc: Shortcut) {
-        widget.set_shortcut(sc);
-    }
-
-    pub fn manager() -> ShortcutManager {
-        ShortcutManager::new()
-    }
-}
-
-pub struct ShortcutManager {
-    handlers: Rc<RefCell<HashMap<u64, Box<dyn FnMut()>>>>,
-}
-
-impl ShortcutManager {
-    pub fn new() -> Self {
-        Self {
-            handlers: Rc::new(RefCell::new(HashMap::new())),
+    for part in s.split('+') {
+        match part.trim().to_lowercase().as_str() {
+            "ctrl" => state.insert(EventState::Ctrl),
+            "alt" => state.insert(EventState::Alt),
+            "shift" => state.insert(EventState::Shift),
+            "cmd" | "meta" | "super" => state.insert(EventState::Meta),
+            k if k.chars().count() == 1 => {
+                key = Some(Key::from_char(k.chars().next().unwrap()));
+            }
+            "f1" => key = Some(Key::F1),
+            "f2" => key = Some(Key::F2),
+            "f3" => key = Some(Key::F3),
+            "f4" => key = Some(Key::F4),
+            "f5" => key = Some(Key::F5),
+            "enter" | "return" => key = Some(Key::Enter),
+            "escape" | "esc" => key = Some(Key::Escape),
+            "space" => key = Some(Key::from_char(' ')),
+            _ => return None,
         }
     }
 
-    pub fn register<F>(&mut self, sc: Shortcut, f: F)
-    where
-        F: FnMut() + 'static,
-    {
-        self.handlers
-            .borrow_mut()
-            .insert(sc.bits() as u64, Box::new(f));
-    }
-
-    pub fn unregister(&mut self, sc: Shortcut) {
-        self.handlers.borrow_mut().remove(&(sc.bits() as u64));
-    }
-
-    pub fn clear(&mut self) {
-        self.handlers.borrow_mut().clear();
-    }
-
-    pub fn attach(&self, wind: &mut Window) {
-        let handlers = self.handlers.clone();
-
-        wind.handle(move |_w, ev| {
-            if ev == Event::KeyUp {
-                let key = app::event_key();
-                let state = app::event_state();
-                let current = state | Shortcut::from_key(key);
-
-                if let Some(cb) = handlers.borrow_mut().get_mut(&(current.bits() as u64)) {
-                    cb();
-                    return true;
-                }
-            }
-            false
-        });
+    match key {
+        Some(k) if !state.is_empty() => {
+            let bits = state.bits() | k.bits();
+            Some(Shortcut::from_bits_truncate(bits))  // 加上 Some(...)
+        }
+        _ => None,
     }
 }
+
+/// Placeholder for a global shortcut manager.
+/// You can expand this in the future to handle application-wide hotkeys.
+pub struct ShortcutManager;
 
 impl Default for ShortcutManager {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl ShortcutManager {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+/// Predefined shortcuts or helper methods.
+pub struct Shortcuts;
+
+impl Shortcuts {
+    /// Helper to get Ctrl+S (or Cmd+S on macOS).
+    pub fn ctrl_s() -> Shortcut {
+        parse_shortcut("Ctrl+S").unwrap()
+    }
+
+    /// Helper to get F1.
+    pub fn f1() -> Shortcut {
+        parse_shortcut("F1").unwrap()
+    }
+
+    /// Helper to get F5.
+    pub fn f5() -> Shortcut {
+        parse_shortcut("F5").unwrap()
     }
 }

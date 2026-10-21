@@ -13,27 +13,28 @@ fltk-kit 把这些都封装成类型 + 关联函数，一行调用解决。
 
 ##  二、模块结构
 库分为三层，依赖关系清晰：
-fltk-kit
-├── core          ← 纯逻辑，不依赖 FLTK
-│   ├── rect      几何计算（矩形切分、对齐、按钮排列）
-│   ├── theme     通用常量（间距、尺寸、字号）
-│   ├── text      文本处理（截断、字节格式化、千分位）
-│   └── paths     路径辅助（exe 目录、纯文件名、纯文件夹名）
-│
-├── widget        ← FLTK 控件辅助
-│   ├── fonts       字体选择（用户 > 系统语言 > 兜底，三级优先级）
-│   ├── icon        窗口图标与图像加载（PNG/ICO/Base64/字节）
-│   ├── dialogs     居中弹窗与文件选择器
-│   ├── auto_page   自动缩放的页面容器
-│   ├── layout_ext  Rect 到 FLTK 控件的桥接（RectExt trait）
-│   ├── tree        Tree 控件辅助
-│   ├── table       SmartTable 辅助
-│   ├── windows     窗口创建与最大化
-│   └── shortcuts   快捷键常量与全局管理器
-│
-└── async_kit     ← 异步与多线程
-    ├── channel    工作线程 → UI 线程的消息通道
-    └── task       后台任务（含取消）
+fltk-kit  
+├── core          ← 纯逻辑，不依赖 FLTK  
+│   ├── rect      几何计算（矩形切分、对齐、按钮排列）  
+│   ├── theme     通用常量（间距、尺寸、字号）  
+│   ├── text      文本处理（截断、字节格式化、千分位）  
+│   └── paths     路径辅助（exe 目录、纯文件名、纯文件夹名）  
+│  
+├── widget        ← FLTK 控件辅助  
+│   ├── fonts       字体选择（用户 > 系统语言 > 兜底，三级优先级）  
+│   ├── icon        窗口图标与图像加载（PNG/ICO/Base64/字节）  
+│   ├── dialogs     居中弹窗与文件选择器  
+│   ├── auto_page   自动缩放的页面容器  
+│   ├── layout_ext  Rect 到 FLTK 控件的桥接（RectExt trait）  
+│   ├── tree        Tree 控件辅助  
+│   ├── table       SmartTable 辅助  
+│   ├── windows     窗口创建与最大化  
+│   └── shortcuts   快捷键常量与全局管理器  
+│  
+└── async_kit     ← 异步与多线程  
+    ├── channel    工作线程 → UI 线程的消息通道  
+    └── task       后台任务（含取消）  
+
 分层的意义：
 core 层不依赖 FLTK，可以被任何 Rust 项目复用，单元测试也容易写。
 widget 层依赖 fltk，提供 GUI 辅助。
@@ -42,7 +43,6 @@ async_kit 层依赖 fltk，处理异步。
 ## 三、核心类型与用法
 ### 1. Rect — 布局的基础
 Rect 是一个纯几何矩形 (x, y, w, h)，提供纯函数的切分操作，用于组合任意布局。
-
 基本构造：
 ```
 use fltk_kit::{Rect, Theme};
@@ -50,8 +50,6 @@ use fltk_kit::{Rect, Theme};
 let win = Rect::window(800, 600);
 // 页面内容区：顶部从 40 开始，底部预留 60，左右各留 10
 let content = Rect::content(800, 600, 40, 60, Theme::PAD_MD);
-
-
 //切分操作（返回 (剩余, 切出)）：
 let (rest, top)    = content.cut_top(40);       // 从顶部切 40
 let (rest, bottom) = content.cut_bottom(60);    // 从底部切 60
@@ -75,14 +73,13 @@ let cells = content.grid(3, 4, 5);  // 3 行 4 列
 应用到控件：  
 ```
 use fltk_kit::RectExt;
-
 tree_area.apply_to(&mut tree);
 table_area.apply_to(&mut table);
-
 // 批量
 Rect::apply_all(&[rect1, rect2], &mut [&mut w1, &mut w2]);
-关键点：Rect 本身不依赖 FLTK，apply_to 定义在 RectExt trait 上，所以 core::rect 保持纯净。
 ```
+关键点：Rect 本身不依赖 FLTK，apply_to 定义在 RectExt trait 上，所以 core::rect 保持纯净。
+
 
 ### 2. AutoPage — 自动布局的页面
 AutoPage 封装一个 Group 和一个布局闭包。窗口缩放或页面切换时，调用 relayout 自动重排。
@@ -122,6 +119,11 @@ wind.resize_callback(move |_, _, _, w, h| {
 });
 ```
 关键点：on_layout 接受 FnMut(Rect)，因为布局闭包通常要 apply_to(&mut widget)。闭包捕获的控件句柄要声明为 mut，因为 apply_to 需要可变借用。
+AutoPage 的价值：
+布局逻辑跟着页面走，不会散落在全局 resize_callback 里。
+多个页面各自独立，互不影响。
+加页面只需新建一个 AutoPage。
+
 
 ### 3. Fonts — 三级优先级的字体选择
 按 用户指定 > 系统语言 > 兜底 的顺序找字体。

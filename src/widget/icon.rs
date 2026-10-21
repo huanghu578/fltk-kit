@@ -1,9 +1,16 @@
-//! Window icons and image loading.
+//! Window icon and image helpers.
+//!
+//! All setters return `bool` and never panic: a failed decode or a
+//! missing icon is reported as `false` rather than aborting the app.
+//!
+//! Uses only `fltk`'s built-in image decoders (`PngImage`, `IcoImage`)
+//! plus `base64` for Base64 input. No `image` crate dependency.
 
 use base64::{engine::general_purpose, Engine as _};
 use fltk::{
+    enums::{Align, Color, FrameType},
     frame::Frame,
-    image::{IcoImage, PngImage, RgbImage},
+    image::{IcoImage, PngImage, SharedImage},
     prelude::*,
     window::Window,
 };
@@ -11,106 +18,76 @@ use fltk::{
 pub struct Icon;
 
 impl Icon {
-    pub fn set_embd_png(wind: &mut Window, data: &[u8]) -> bool {
-        if let Some(icon) = Self::png_from_bytes(data) {
-            wind.set_icon(Some(icon));
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn set_embd_ico(wind: &mut Window, data: &[u8]) -> bool {
-        if let Some(icon) = Self::ico_from_bytes(data) {
-            wind.set_icon(Some(icon));
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn set_embd_auto(wind: &mut Window, data: &[u8]) -> bool {
-        Self::set_embd_png(wind, data) || Self::set_embd_ico(wind, data)
-    }
-
-    pub fn set_base64_png(wind: &mut Window, b64: &str) -> bool {
-        if let Some(icon) = Self::png_from_base64(b64) {
-            wind.set_icon(Some(icon));
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn set_base64_ico(wind: &mut Window, b64: &str) -> bool {
-        if let Some(icon) = Self::ico_from_base64(b64) {
-            wind.set_icon(Some(icon));
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn png_from_bytes(data: &[u8]) -> Option<PngImage> {
-        PngImage::from_data(data).ok()
-    }
-
-    pub fn ico_from_bytes(data: &[u8]) -> Option<IcoImage> {
-        IcoImage::from_data(data).ok()
-    }
-
-    pub fn png_from_base64(b64: &str) -> Option<PngImage> {
-        let bytes = Self::decode_base64(b64)?;
-        Self::png_from_bytes(&bytes)
-    }
-
-    pub fn ico_from_base64(b64: &str) -> Option<IcoImage> {
-        let bytes = Self::decode_base64(b64)?;
-        Self::ico_from_bytes(&bytes)
-    }
-
-    pub fn rgb_from_bytes(data: &[u8]) -> Option<RgbImage> {
-        let img = image::load_from_memory(data).ok()?;
-        let rgb = img.to_rgb8();
-        let (w, h) = rgb.dimensions();
-        let raw = rgb.into_raw();
-        RgbImage::new(&raw, w as i32, h as i32, fltk::enums::ColorDepth::Rgb8).ok()
-    }
-
-    pub fn rgb_from_base64(b64: &str) -> Option<RgbImage> {
-        let bytes = Self::decode_base64(b64)?;
-        Self::rgb_from_bytes(&bytes)
-    }
-
-    pub fn scale_rgb(mut img: RgbImage, w: i32, h: i32, keep_aspect: bool) -> RgbImage {
-        img.scale(w, h, keep_aspect, true);
-        img
-    }
-
-    pub fn rgb_from_base64_scaled(b64: &str, w: i32, h: i32) -> Option<RgbImage> {
-        let img = Self::rgb_from_base64(b64)?;
-        Some(Self::scale_rgb(img, w, h, true))
-    }
-
-    /// Decode Base64 and display the image in `frame`, scaled to fit.
-    pub fn show_base64_in_frame(frame: &mut Frame, b64: &str) {
-        match Self::rgb_from_base64(b64) {
-            Some(img) => {
-                let (w, h) = (frame.width(), frame.height());
-                let scaled = Self::scale_rgb(img, w, h, true);
-                frame.set_image(Some(scaled));
-                frame.set_label("");
+    /// Set a window icon from embedded PNG bytes.
+    pub fn set_embd_png(window: &mut Window, data: &[u8]) -> bool {
+        match PngImage::from_data(data) {
+            Ok(img) => {
+                window.set_icon(Some(img));
+                true
             }
-            _ => {
-                frame.set_label("(image decode failed)");
-                frame.set_image(None::<RgbImage>);
-            }
+            Err(_) => false,
         }
-        frame.redraw();
     }
 
-    fn decode_base64(b64: &str) -> Option<Vec<u8>> {
-        let cleaned: String = b64.chars().filter(|c| !c.is_whitespace()).collect();
-        general_purpose::STANDARD.decode(cleaned).ok()
+    /// Set a window icon from embedded ICO bytes.
+    pub fn set_embd_ico(window: &mut Window, data: &[u8]) -> bool {
+        match IcoImage::from_data(data) {
+            Ok(img) => {
+                window.set_icon(Some(img));
+                true
+            }
+            Err(_) => false,
+        }
+    }
+
+    /// Set a window icon from a Base64-encoded PNG string.
+    pub fn set_base64_png(window: &mut Window, b64: &str) -> bool {
+        let Ok(bytes) = general_purpose::STANDARD.decode(b64.trim()) else {
+            return false;
+        };
+        Self::set_embd_png(window, &bytes)
+    }
+
+    /// Decode a Base64 PNG and display it in a `Frame`, scaled to fit.
+    ///
+    /// The frame's label is cleared and the image is centered. Returns
+    /// `false` if decoding fails or the frame is too small to fit any
+    /// image.
+    pub fn show_base64_in_frame(frame: &mut Frame, b64: &str) -> bool {
+        let Ok(bytes) = general_purpose::STANDARD.decode(b64.trim()) else {
+            return false;
+        };
+        let Ok(mut img) = PngImage::from_data(&bytes) else {
+            return false;
+        };
+
+        let (fw, fh) = (frame.w(), frame.h());
+        if fw <= 0 || fh <= 0 {
+            return false;
+        }
+
+        // Scale preserving aspect ratio, fit inside the frame.
+        let (iw, ih) = (img.width(), img.height());
+        if iw <= 0 || ih <= 0 {
+            return false;
+        }
+        let scale = (fw as f64 / iw as f64).min(fh as f64 / ih as f64);
+        let (nw, nh) = (
+            (iw as f64 * scale).max(1.0) as i32,
+            (ih as f64 * scale).max(1.0) as i32,
+        );
+        img.scale(nw, nh, true, true);
+
+        frame.set_label("");
+        // SharedImage::from_image 需要引用
+        let Ok(shared) = SharedImage::from_image(&img) else {
+            return false;
+        };
+        frame.set_image(Some(shared));
+        // Align 中图片对齐常量名为 ImageMask
+        frame.set_align(Align::Center | Align::ImageMask);
+        frame.set_frame(FrameType::NoBox);
+        frame.set_color(Color::White);
+        true
     }
 }

@@ -1,79 +1,93 @@
-//! Background tasks: spawn a worker thread and deliver the result to the UI thread.
+//! Background task execution with UI-thread result delivery.
+//!
+//! FLTK is single-threaded: widget updates must happen on the UI thread.
+//! `Task` runs a closure on a background thread and delivers its result
+//! to a callback that is guaranteed to run on the UI thread.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::thread;
+use crate::async_kit::channel::Channel;
 
-use super::channel::Channel;
+/// Cooperative cancellation token.
+///
+/// **Note**: `cancel()` merely sets a flag. The worker closure must
+/// periodically call [`is_cancelled`] to actually stop. Rust cannot
+/// forcibly terminate a running thread.
+#[derive(Clone, Default)]
+pub struct CancelToken(Arc<AtomicBool>);
+
+impl CancelToken {
+    /// Creates a new, uncancelled token.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Requests cancellation. Safe to call from any thread.
+    pub fn cancel(&self) {
+        self.0.store(true, Ordering::SeqCst);
+    }
+
+    /// Returns `true` if cancellation has been requested.
+    pub fn is_cancelled(&self) -> bool {
+        self.0.load(Ordering::SeqCst)
+    }
+}
 
 pub struct Task;
 
 impl Task {
-    /// Run `work` on a worker thread, then call `on_done` on the UI thread.
-    pub fn run<W, T, F>(interval_sec: f64, work: W, on_done: F)
+    /// Runs `worker` on a background thread and delivers its result to
+    /// `on_ui` on the UI thread.
+    ///
+    /// `interval` is the polling interval in seconds (e.g. `0.05`).
+    /// The callback runs exactly once and then the polling loop stops.
+    ///
+    /// Returns immediately; the result is delivered asynchronously.
+    pub fn run<W, R, C>(interval: f64, worker: W, on_ui: C)
     where
-        W: FnOnce() -> T + Send + 'static,
-        T: Send + 'static,
-        F: FnMut(T) + 'static,
+        W: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+        C: FnMut(R) + 'static,
     {
-        let tx = Channel::spawn_poll(interval_sec, on_done);
-        thread::spawn(move || {
-            let result = work();
-            tx.send_or_warn(result);
+        let (tx, rx) = Channel::new();
+
+        std::thread::spawn(move || {
+            let result = worker();
+            let _ = tx.send(result);
         });
+
+        rx.spawn_poll_once(interval, on_ui);
     }
 
-    /// Like `run` but returns a `CancelToken` that can stop the work.
-    /// The work closure receives the token and should check it periodically.
-    pub fn run_cancellable<W, T, F>(
-        interval_sec: f64,
-        work: W,
-        on_done: F,
+    /// Like [`Task::run`], but the worker receives a [`CancelToken`]
+    /// that it can poll. Returns the token so the caller (typically on
+    /// the UI thread, e.g. a "Cancel" button) can request cancellation.
+    ///
+    /// The worker only stops when it **checks** `token.is_cancelled()`.
+    /// For long loops, check every iteration; for blocking I/O, check
+    /// between I/O calls.
+    pub fn run_cancellable<W, R, C>(
+        interval: f64,
+        worker: W,
+        on_ui: C,
     ) -> CancelToken
     where
-        W: FnOnce(&CancelToken) -> T + Send + 'static,
-        T: Send + 'static,
-        F: FnMut(T) + 'static,
+        W: FnOnce(&CancelToken) -> R + Send + 'static,
+        R: Send + 'static,
+        C: FnMut(R) + 'static,
     {
         let token = CancelToken::new();
-        let token_for_work = token.clone();
+        let worker_token = token.clone();
 
-        let tx = Channel::spawn_poll(interval_sec, on_done);
-        thread::spawn(move || {
-            let result = work(&token_for_work);
-            tx.send_or_warn(result);
+        let (tx, rx) = Channel::new();
+
+        std::thread::spawn(move || {
+            let result = worker(&worker_token);
+            let _ = tx.send(result);
         });
 
+        rx.spawn_poll_once(interval, on_ui);
+
         token
-    }
-}
-
-/// A cancellation flag shared with a worker thread.
-#[derive(Clone)]
-pub struct CancelToken {
-    cancelled: Arc<AtomicBool>,
-}
-
-impl CancelToken {
-    pub fn new() -> Self {
-        Self {
-            cancelled: Arc::new(AtomicBool::new(false)),
-        }
-    }
-
-    /// Request cancellation.
-    pub fn cancel(&self) {
-        self.cancelled.store(true, Ordering::Relaxed);
-    }
-
-    /// Whether cancellation was requested.
-    pub fn is_cancelled(&self) -> bool {
-        self.cancelled.load(Ordering::Relaxed)
-    }
-}
-
-impl Default for CancelToken {
-    fn default() -> Self {
-        Self::new()
     }
 }
