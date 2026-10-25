@@ -3,66 +3,130 @@
 
 use fltk::{app, button, frame, input, prelude::*, window};
 use fltk_kit::Settings;
+use serde::{Deserialize, Serialize};
+
+// 定义一个结构体用于测试结构体数组
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct User {
+    id: u32,
+    name: String,
+}
 
 fn main() {
     let app = app::App::default();
 
-    // 1. 加载配置
-    // 会在类似 C:\Users\Administrator\AppData\Roaming\my_app\settings.toml 的地方生成文件
+    // ==========================================
+    // 1. 加载配置与首次运行判断
+    // ==========================================
     let mut settings = Settings::load("my_app");
 
+    if settings.is_new() {
+        println!("[首次运行] 正在生成默认配置...");
+        // 基础类型
+        settings.set_default("theme", "Dark");
+        
+        // 嵌套点号语法
+        settings.set_default("window.width", 1024);
+        settings.set_default("window.height", 768);
+        
+        // 数组类型
+        settings.set_default("recent_files", vec!["doc1.txt", "doc2.txt"]);
+        
+        // 结构体数组
+        let default_users = vec![
+            User { id: 1, name: "Alice".to_string() },
+            User { id: 2, name: "Bob".to_string() },
+        ];
+        settings.set_default("users", default_users);
+
+        settings.save(); // 落盘
+    } else {
+        println!("[日常运行] 已加载本地配置文件。");
+    }
+
+    // ==========================================
+    // 2. 从磁盘读取各类数据
+    // ==========================================
+    let theme: String = settings.get("theme").unwrap_or_else(|| "Light".to_string());
+    let width: i32 = settings.get("window.width").unwrap_or(800);
+    let recent_files: Vec<String> = settings.get("recent_files").unwrap_or_default();
+    let users: Vec<User> = settings.get("users").unwrap_or_default();
+
+    // ==========================================
+    // 3. 构建 UI 显示读取到的数据
+    // ==========================================
     let mut win = window::Window::default()
-        .with_size(500, 300)
-        .with_label("Settings Demo")
+        .with_size(500, 400)
+        .with_label("Settings Read/Write Demo")
         .center_screen();
 
-    let mut info_frame = frame::Frame::new(20, 20, 460, 40, "");
+    let mut info_frame = frame::Frame::new(20, 20, 460, 160, "");
     info_frame.set_label_size(14);
-    info_frame.set_label_color(fltk::enums::Color::Dark3);
-    info_frame.set_align(fltk::enums::Align::Left | fltk::enums::Align::Inside);
-
-    // 2. 读取配置（带默认值兜底）
-    // 如果之前没存过，默认主题是 "dark"，字体大小是 14，自动保存开启
-    let theme: String = settings.get("theme").unwrap_or_else(|| "dark".to_string());
-    let font_size: i32 = settings.get("font_size").unwrap_or(14);
-    let auto_save: bool = settings.get("auto_save").unwrap_or(true);
+    info_frame.set_align(fltk::enums::Align::TopLeft | fltk::enums::Align::Inside);
+    
+    let mut user_str = String::new();
+    for u in &users {
+        user_str.push_str(&format!("  - ID: {}, Name: {}\n", u.id, u.name));
+    }
 
     info_frame.set_label(&format!(
-        "当前配置:\n主题: {}\n字体大小: {}\n自动保存: {}",
-        theme, font_size, auto_save
+        "当前配置读取结果:\n\n主题: {}\n窗口宽度: {}\n最近文件: {:?}\n\n用户列表:\n{}",
+        theme, width, recent_files, user_str
     ));
 
-    // 3. 模拟修改配置并保存
-    let mut input_font = input::Input::new(200, 90, 100, 30, "New Font Size:");
-    input_font.set_align(fltk::enums::Align::Left);
+    // ==========================================
+    // 4. 模拟用户修改配置
+    // ==========================================
+    let mut input_width = input::Input::new(150, 200, 100, 30, "新窗口宽度:");
+    input_width.set_align(fltk::enums::Align::Left);
+    input_width.set_value(&width.to_string());
 
-    let mut btn_save = button::Button::new(150, 150, 200, 40, "Save Settings");
+    let mut btn_save = button::Button::new(150, 260, 200, 40, "保存并新增用户");
+
+    let mut status_label = frame::Frame::new(20, 320, 460, 40, "");
+    status_label.set_label_color(fltk::enums::Color::Dark3);
+    status_label.set_align(fltk::enums::Align::Center);
 
     let mut info_clone = info_frame.clone();
-    btn_save.set_callback(move |_| {
-        // 读取用户输入并转换
-        if let Ok(new_size) = input_font.value().parse::<i32>() {
-            settings.set("font_size", new_size);
-            settings.set("last_updated", "just now");
-            
-            // 写入磁盘！
-            settings.save();
+    let mut status_clone = status_label.clone();
 
-            // 更新 UI 展示，证明已经生效
-            info_clone.set_label(&format!(
-                "✅ 已保存并重新加载!\n当前字体大小: {}\n(看控制台或本地文件)",
-                new_size
-            ));
-            info_clone.set_label_color(fltk::enums::Color::Green);
-        } else {
-            info_clone.set_label("❌ 请输入有效的数字!");
-            info_clone.set_label_color(fltk::enums::Color::Red);
+    btn_save.set_callback(move |_| {
+        // 修改单值
+        if let Ok(new_width) = input_width.value().parse::<i32>() {
+            settings.set("window.width", new_width);
         }
+
+        // 修改数组：模拟增加了一个用户
+        let mut current_users: Vec<User> = settings.get("users").unwrap_or_default();
+        current_users.push(User {
+            id: current_users.len() as u32 + 1,
+            name: "Charlie".to_string(),
+        });
+        settings.set("users", current_users.clone());
+        
+        // 修改嵌套的深层值
+        settings.set("window.position.x", 100);
+        settings.set("window.position.y", 100);
+
+        // 保存到磁盘
+        settings.save();
+
+        // 更新界面反馈
+        status_clone.set_label("✅ 已保存到 settings.toml，请去文件查看嵌套结构！");
+        status_clone.set_label_color(fltk::enums::Color::Green);
+        
+        // 刷新展示面板
+        let mut user_str = String::new();
+        for u in &current_users {
+            user_str.push_str(&format!("  - ID: {}, Name: {}\n", u.id, u.name));
+        }
+        info_clone.set_label(&format!(
+            "当前配置读取结果:\n\n主题: {}\n窗口宽度: {}\n最近文件: {:?}\n\n用户列表:\n{}",
+            theme, input_width.value(), recent_files, user_str
+        ));
     });
 
     win.end();
     win.show();
-
-    println!("请去修改文件测试，或者直接运行后输入数字保存。");
     app.run().unwrap();
 }
