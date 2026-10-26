@@ -1,4 +1,5 @@
 # 编译输出
+Cargo.lock
 target/
 bin/
 build/
