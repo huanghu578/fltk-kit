@@ -4,9 +4,9 @@
 //! `Task` runs a closure on a background thread and delivers its result
 //! to a callback that is guaranteed to run on the UI thread.
 
+use crate::async_kit::channel::Channel;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use crate::async_kit::channel::Channel;
 
 /// Cooperative cancellation token.
 ///
@@ -66,11 +66,7 @@ impl Task {
     /// The worker only stops when it **checks** `token.is_cancelled()`.
     /// For long loops, check every iteration; for blocking I/O, check
     /// between I/O calls.
-    pub fn run_cancellable<W, R, C>(
-        interval: f64,
-        worker: W,
-        on_ui: C,
-    ) -> CancelToken
+    pub fn run_cancellable<W, R, C>(interval: f64, worker: W, on_ui: C) -> CancelToken
     where
         W: FnOnce(&CancelToken) -> R + Send + 'static,
         R: Send + 'static,

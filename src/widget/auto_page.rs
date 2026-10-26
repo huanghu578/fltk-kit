@@ -6,10 +6,11 @@ use std::rc::Rc;
 use fltk::{group::Group, prelude::*};
 
 use crate::core::rect::Rect;
-
+// 🌟 新增 1：定义类型别名，消除 Clippy 警告
+type LayoutFn = Rc<RefCell<Option<Box<dyn FnMut(Rect)>>>>;
 pub struct AutoPage {
     group: Group,
-    layout_fn: Rc<RefCell<Option<Box<dyn FnMut(Rect)>>>>,
+    layout_fn: LayoutFn, // ✅ 替换为别名
     content_top: i32,
     pad: i32,
 }

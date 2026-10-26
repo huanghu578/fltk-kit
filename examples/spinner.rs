@@ -13,7 +13,7 @@ fn main() {
 
     // 1. 创建一个输入框（用于测试任务期间是否卡顿）
     let input_field = input::Input::new(100, 30, 200, 30, "Type:");
-    
+
     // 2. 创建 Spinner
     let mut spinner = Spinner::new(150, 90, 100, 100);
     spinner.hide();
@@ -29,7 +29,6 @@ fn main() {
         // 任务开始：显示动画，禁用按钮
         spinner_clone.show();
         btn_clone.deactivate();
-        
 
         let mut spinner_in_task = spinner_clone.clone();
         let mut btn_in_task = btn_clone.clone();
@@ -47,7 +46,7 @@ fn main() {
             move |msg| {
                 // 👇 这里是 UI 主线程（任务结束自动触发）
                 println!("{}", msg);
-                
+
                 // 任务结束：隐藏动画，恢复输入框和按钮
                 spinner_in_task.hide();
                 btn_in_task.activate();

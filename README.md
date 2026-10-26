@@ -1,141 +1,129 @@
 # fltk-kit 🧰
 
-Reusable utilities and boilerplate reducers for [`fltk-rs`](https://github.com/fltk-rs/fltk-rs) applications.
+Reusable, high-level utilities and boilerplate reducers for [`fltk-rs`](https://github.com/fltk-rs/fltk-rs) applications.
 
-`fltk-kit` fills the gaps that almost every FLTK project ends up writing by hand: geometry helpers, layout management, form validation, table/tree data binding, dialog wrappers, icon loading, background tasks, window persistence, and file system watching.
-
-## Architecture
-
-The library is organized into three distinct layers:
-
-| Layer | Purpose | FLTK dependency |
-|-------|---------|-----------------|
-| `core` | Pure logic: geometry, validators, string utilities | None |
-| `widget` | FLTK widget helpers, extension traits, and UI components | Yes |
-| `async_kit` | Channels and background task utilities | Yes (for UI polling) |
+FLTK is incredibly fast and lightweight, but it requires a lot of boilerplate for modern desktop app development. `fltk-kit` fills these gaps without forcing you into a heavy framework. It handles the painful parts: responsive layouts, CJK fonts, centered dialogs, thread-safe async updates, and cross-platform file handling.
 
 ## Features
 
-### Core Layer
-- **`Rect`** — Geometry primitives with `cut_*` layout helpers.
-- **`Theme`** — Shared spacing, size, and font constants.
-- **`Text` / `Paths`** — CJK-aware string truncation, human-readable bytes/counts, path helpers.
-- **`Validator`** — Pure logic validators (`Required`, `NumberRange`) decoupled from UI.
-
-### Widget Layer
-- **`RectExt`** — Apply `core::Rect` directly to any FLTK widget (`btn.apply_rect(rect)`).
-- **`ValidatedInput`** — Bind validators to `Input` widgets. Automatically turns text red and shows a tooltip on error.
-- **`TableBindingExt`** — Fill a `SmartTable` with 2D slices in one line (`table.bind_data(&data)`).
-- **`TreeBindingExt`** — Build hierarchical `Tree` structures from a list of parent-child pairs.
-- **`Fonts`** — Three-tier font selection (user preference → system language → fallback).
-- **`Dialogs`** — Centered message, confirm, input, and file dialogs relative to the parent window.
-- **`AutoPage`** — Stores a layout closure and re-lays out on window resize.
-- **`TreeHelper` / `TableHelper`** — Common complex operations for Tree and SmartTable (e.g., scanning directories, ndarray binding).
-- **`Windows` / `Shortcuts`** — Window creation helpers, global hotkeys, and `parse_shortcut("Ctrl+S")`.
-
-### Async Layer
-- **`Channel`** — Thread-safe communication bridging worker threads to the FLTK UI thread.
-- **`Task` / `CancelToken`** — Spawn background jobs and safely deliver results (or check for cancellation) on the UI thread.
-
-### Optional Features
-- **`Persist`** (`persist` feature) — Save and restore window position and size using TOML.
-- **`FileWatcher`** (`fs-watch` feature) — Monitor file system changes and safely forward events to the UI thread.
-- **`Icon`** (`icon` feature) — Set window icons from embedded PNG/ICO bytes, Base64 strings, or display them in a `Frame`.
+- **Responsive Layouts**: `Rect` and `AutoPage` make complex window resizing as easy as slicing a cake.
+- **CJK Font Handling**: `Fonts` automatically applies the correct system fonts to prevent Chinese/Japanese/Korean characters from showing as squares.
+- **Window Helpers**: `Windows` handles the tricky initialization sequence for maximizable, resizable windows.
+- **Thread-safe Async**: `Channel` and `Task` safely pass messages from background worker threads to the FLTK UI thread.
+- **UI Extensions**: Bind validators to inputs (`ValidatedInput`), and fill `SmartTable` or `Tree` with data in a single line.
+- **Icons & Spinner**: Embed window/exe icons (`Icon`, `build.rs`) and display a beautiful, zero-dependency loading spinner (`Spinner`).
+- **Global Settings**: `Settings` provides a robust, dot-notation configuration manager with default values.
+- **App Metadata**: `AppInfo` easily extracts `Cargo.toml` metadata for "About" dialogs.
 
 ## Installation
 
+Add `fltk-kit` to your `Cargo.toml`:
+
 ```toml
 [dependencies]
-fltk-kit = { version = "0.2", features = ["full"] }
-Feature flags
-Feature	Enables	Dependencies
-persist	Persist (window state)	serde, toml
-fs-watch	FileWatcher	notify
-icon	Icon (Base64 image helpers)	base64
-full	All of the above	—
-Quick Start
-1. Responsive Layout (Rect)
-rust
-use fltk_kit::{Rect, RectExt};
+fltk-kit = "0.3.0"
+Exe Icons (Windows)
+To set your .exe icon, add a build.rs in your project root:
 
-let mut space = Rect::new(0, 0, 800, 600);
-let top = space.cut_top(50); // Cut top 50px
-btn.apply_rect(top);         // Apply to widget
-2. Form Validation (ValidatedInput)
 rust
+fn main() {
+    if std::path::Path::new("assets/icon.ico").exists() {
+        let mut res = winres::WindowsResource::new();
+        res.set_icon("assets/icon.ico");
+        res.compile().unwrap();
+    }
+}
+(Requires winres in [build-dependencies])
+
+Quick Start Examples
+1. Responsive Layouts (AutoPage)
+Stop calculating x, y, w, h manually. Slice the content area and let AutoPage handle the rest.
+
+rust
+use fltk::{app, button, prelude::*, text::TextDisplay};
+use fltk_kit::{AutoPage, Rect, Windows};
+
+let mut win = Windows::create_maximized(600, 400, "Layout Demo");
+let mut page = AutoPage::new(0, 0, 600, 400, "");
+page.set_top(20);
+page.group().begin();
+
+let mut btn = button::Button::new(0, 0, 0, 0, "Click");
+let mut text = TextDisplay::new(0, 0, 0, 0, "Stretches automatically.");
+page.group().end(); page.finish();
+
+page.on_layout(move |content: Rect| {
+    let mut c = content;
+    let mut bottom = c.cut_bottom(40);
+    btn.resize(bottom.x, bottom.y, 80, bottom.h);
+    text.resize(c.x, c.y, c.w, c.h);
+});
+2. CJK Fonts (Fonts)
+rust
+use fltk_kit::Fonts;
+
+// Automatically selects "Microsoft YaHei" on Windows or "PingFang SC" on macOS
+Fonts::setup_auto(14); 
+3. Form Validation (ValidatedInput)
+rust
+use fltk::{input, prelude::*};
 use fltk_kit::{ValidatedInput, Required};
 
-let mut input = fltk::input::Input::new(10, 10, 200, 25, "Name:");
-input.bind_validator(Required); // Turns red if empty
-3. Data Binding (TableBindingExt & TreeBindingExt)
+let mut input = input::Input::new(10, 10, 200, 25, "Name:");
+input.set_align(fltk::enums::Align::Left);
+// Turns red and shows a tooltip if the user leaves it empty
+input.bind_validator(Required); 
+4. Data Binding (TableBindingExt / TreeBindingExt)
 rust
 use fltk_table::SmartTable;
 use fltk_kit::TableBindingExt;
 
-let data = vec![
-    vec!["ID", "Name"], 
-    vec!["1", "Alice"]
-];
+let data = vec![vec!["ID", "Name"], vec!["1", "Alice"]];
 let mut table = SmartTable::default();
 table.bind_data(&data);
-4. Text Utilities
-rust
-use fltk_kit::Text;
+5. Async Tasks (Task)
+Safely update the UI after a long-running background task.
 
-assert_eq!(Text::truncate_display("Hello 世界", 8), "Hello 世…");
-assert_eq!(Text::human_bytes(1024), "1.0 KB");
-assert_eq!(Text::human_count(1_234_567), "1,234,567");
-5. Background Work (Task)
 rust
 use fltk_kit::Task;
 
-Task::run(
-    0.05, // polling interval
-    move || { /* heavy work in background */ 42 },
-    move |result| { 
-        // Runs on UI thread safely!
-        println!("{}", result); 
-    },
+Task::run(0.05, 
+    || { std::thread::sleep(std::time::Duration::from_secs(2)); "Done!" },
+    move |msg| { println!("UI Thread received: {}", msg); }
 );
-6. File Watching (fs-watch)
-rust
-#[cfg(feature = "fs-watch")]
-{
-    use fltk_kit::{Channel, FileWatcher};
+6. Global Settings (Settings)
+A robust TOML configuration manager supporting nested keys and arrays.
 
-    let (tx, rx) = Channel::new();
-    let _watcher = FileWatcher::watch("config.toml", move || { let _ = tx.send(()); })?;
-    
-    // Poll on UI thread
-    rx.spawn_poll(0.05, move |_| { /* reload config */ });
-}
-7. Window Persistence (persist)
 rust
-#[cfg(feature = "persist")]
-{
-    use fltk_kit::Persist;
+use fltk_kit::Settings;
 
-    Persist::restore(&mut window, "my_app");       // before show()
-    window.set_callback(move |w| {
-        Persist::save(w, "my_app");                 // on close
-        w.hide();
-    });
+let mut settings = Settings::load("my_app");
+if settings.is_new() {
+    settings.set_default("window.width", 800);
+    settings.set_default("recent_files", vec!["a.txt", "b.txt"]);
+    settings.save();
 }
+
+let width: i32 = settings.get("window.width").unwrap_or(800);
+settings.set("window.width", 1024);
+settings.save();
+7. About Dialogs & Spinner
+rust
+use fltk_kit::{AppInfo, Spinner};
+
+println!("App Name: {}", AppInfo::NAME);
+println!("{}", AppInfo::format_about());
+
+let mut spinner = Spinner::new(10, 10, 50, 50);
+spinner.show(); // Displays a smooth, rotating loading spinner
 Examples
 Run the included examples to see the library in action:
 
 bash
-cargo run --example basic
 cargo run --example layout
-cargo run --example form
-cargo run --example table
-cargo run --example tree
-cargo run --example async_channel
-cargo run --example dialogs
-
-# Examples requiring optional features:
-cargo run --example fs_watch --features fs-watch
-cargo run --example icon --features icon
-cargo run --example persist --features persist
+cargo run --example form_table
+cargo run --example async_task
+cargo run --example about
+cargo run --example icons
 License
 MIT OR Apache-2.0

@@ -23,10 +23,20 @@ pub struct FontSetup {
 
 impl FontSetup {
     fn ok(source: FontSource, name: &str, size: i32) -> Self {
-        Self { success: true, source, font_name: Some(name.to_string()), size }
+        Self {
+            success: true,
+            source,
+            font_name: Some(name.to_string()),
+            size,
+        }
     }
     fn fail(source: FontSource, size: i32) -> Self {
-        Self { success: false, source, font_name: None, size }
+        Self {
+            success: false,
+            source,
+            font_name: None,
+            size,
+        }
     }
 }
 
@@ -36,41 +46,53 @@ impl Fonts {
     pub const DEFAULT_SIZE: i32 = 14;
 
     pub const FALLBACK: &'static [&'static str] = &[
-        "Arial", "Helvetica", "DejaVu Sans", "Liberation Sans", "Segoe UI",
+        "Arial",
+        "Helvetica",
+        "DejaVu Sans",
+        "Liberation Sans",
+        "Segoe UI",
     ];
 
     pub const CANDIDATES_ZH_CN: &'static [&'static str] = &[
-        "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC",
-        "WenQuanYi Micro Hei", "SimHei", "SimSun",
+        "Microsoft YaHei",
+        "PingFang SC",
+        "Noto Sans CJK SC",
+        "WenQuanYi Micro Hei",
+        "SimHei",
+        "SimSun",
     ];
 
     pub const CANDIDATES_ZH_TW: &'static [&'static str] = &[
-        "Microsoft JhengHei", "PingFang TC", "Noto Sans CJK TC",
-        "WenQuanYi Zen Hei", "PMingLiU",
+        "Microsoft JhengHei",
+        "PingFang TC",
+        "Noto Sans CJK TC",
+        "WenQuanYi Zen Hei",
+        "PMingLiU",
     ];
 
     pub const CANDIDATES_JA: &'static [&'static str] = &[
-        "Yu Gothic UI", "Meiryo", "Hiragino Sans", "Noto Sans CJK JP", "MS Gothic",
+        "Yu Gothic UI",
+        "Meiryo",
+        "Hiragino Sans",
+        "Noto Sans CJK JP",
+        "MS Gothic",
     ];
 
     pub const CANDIDATES_KO: &'static [&'static str] = &[
-        "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans CJK KR", "Gulim",
+        "Malgun Gothic",
+        "Apple SD Gothic Neo",
+        "Noto Sans CJK KR",
+        "Gulim",
     ];
 
-    pub const CANDIDATES_AR: &'static [&'static str] = &[
-        "Segoe UI", "Geeza Pro", "Noto Sans Arabic", "Amiri",
-    ];
+    pub const CANDIDATES_AR: &'static [&'static str] =
+        &["Segoe UI", "Geeza Pro", "Noto Sans Arabic", "Amiri"];
 
-    pub const CANDIDATES_LATIN: &'static [&'static str] = &[
-        "Segoe UI", "Helvetica Neue", "Noto Sans", "DejaVu Sans",
-    ];
+    pub const CANDIDATES_LATIN: &'static [&'static str] =
+        &["Segoe UI", "Helvetica Neue", "Noto Sans", "DejaVu Sans"];
 
     /// Apply a font using the three-tier priority.
-    pub fn setup_auto(
-        user: Option<&[&str]>,
-        lang: Option<&str>,
-        size: i32,
-    ) -> FontSetup {
+    pub fn setup_auto(user: Option<&[&str]>, lang: Option<&str>, size: i32) -> FontSetup {
         if let Some(list) = user {
             if !list.is_empty() {
                 if let Some((name, font)) = Self::find_first(list) {
@@ -152,6 +174,10 @@ impl Fonts {
             return Some(Font::Helvetica);
         }
         let font = Font::by_name(name);
-        if font != Font::Helvetica { Some(font) } else { None }
+        if font != Font::Helvetica {
+            Some(font)
+        } else {
+            None
+        }
     }
 }

@@ -6,8 +6,8 @@
 //! driven by `fltk::app::add_timeout3`, so callbacks always run on the UI
 //! thread.
 
-use std::sync::mpsc::{channel as std_channel, Receiver, Sender as StdSender};
 use fltk::app;
+use std::sync::mpsc::{channel as std_channel, Receiver, Sender as StdSender};
 
 /// The sending half of a [`Channel`]. Clone freely; each clone is an
 /// independent producer.

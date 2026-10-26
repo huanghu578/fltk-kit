@@ -39,7 +39,7 @@ impl I18n {
     /// If parsing fails, an empty config is used to prevent crashes.
     pub fn init(path: &str) {
         let path_buf = PathBuf::from(path);
-        
+
         let config = match fs::read_to_string(&path_buf) {
             Ok(content) => {
                 // 解析失败则降级为空配置，绝不 panic
@@ -58,8 +58,11 @@ impl I18n {
             }
         };
 
-        let manager = I18nManager { config, path: path_buf };
-        
+        let manager = I18nManager {
+            config,
+            path: path_buf,
+        };
+
         // 忽略锁中毒，保证稳健性
         if let Ok(mut lock) = MANAGER.write() {
             *lock = Some(manager);
@@ -70,7 +73,7 @@ impl I18n {
     /// Developers should fill in the translations manually in the generated file.
     fn generic_config() -> I18nConfig {
         let mut translations = HashMap::new();
-        
+
         // 默认只有语言代码，没有任何具体的业务键
         translations.insert("en".to_string(), HashMap::new());
         translations.insert("zh-CN".to_string(), HashMap::new());

@@ -24,18 +24,24 @@ fn main() {
         println!("[首次运行] 正在生成默认配置...");
         // 基础类型
         settings.set_default("theme", "Dark");
-        
+
         // 嵌套点号语法
         settings.set_default("window.width", 1024);
         settings.set_default("window.height", 768);
-        
+
         // 数组类型
         settings.set_default("recent_files", vec!["doc1.txt", "doc2.txt"]);
-        
+
         // 结构体数组
         let default_users = vec![
-            User { id: 1, name: "Alice".to_string() },
-            User { id: 2, name: "Bob".to_string() },
+            User {
+                id: 1,
+                name: "Alice".to_string(),
+            },
+            User {
+                id: 2,
+                name: "Bob".to_string(),
+            },
         ];
         settings.set_default("users", default_users);
 
@@ -63,7 +69,7 @@ fn main() {
     let mut info_frame = frame::Frame::new(20, 20, 460, 160, "");
     info_frame.set_label_size(14);
     info_frame.set_align(fltk::enums::Align::TopLeft | fltk::enums::Align::Inside);
-    
+
     let mut user_str = String::new();
     for u in &users {
         user_str.push_str(&format!("  - ID: {}, Name: {}\n", u.id, u.name));
@@ -103,7 +109,7 @@ fn main() {
             name: "Charlie".to_string(),
         });
         settings.set("users", current_users.clone());
-        
+
         // 修改嵌套的深层值
         settings.set("window.position.x", 100);
         settings.set("window.position.y", 100);
@@ -114,7 +120,7 @@ fn main() {
         // 更新界面反馈
         status_clone.set_label("✅ 已保存到 settings.toml，请去文件查看嵌套结构！");
         status_clone.set_label_color(fltk::enums::Color::Green);
-        
+
         // 刷新展示面板
         let mut user_str = String::new();
         for u in &current_users {
@@ -122,7 +128,10 @@ fn main() {
         }
         info_clone.set_label(&format!(
             "当前配置读取结果:\n\n主题: {}\n窗口宽度: {}\n最近文件: {:?}\n\n用户列表:\n{}",
-            theme, input_width.value(), recent_files, user_str
+            theme,
+            input_width.value(),
+            recent_files,
+            user_str
         ));
     });
 

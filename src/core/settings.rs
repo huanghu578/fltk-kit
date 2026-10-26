@@ -19,7 +19,8 @@ impl Settings {
     /// Loads settings from the user's config directory.
     /// C:\Users\Administrator\AppData\Roaming\my_app\settings.toml
     pub fn load(app_name: &str) -> Self {
-        let mut path = std::env::var("APPDATA").map(PathBuf::from)
+        let mut path = std::env::var("APPDATA")
+            .map(PathBuf::from)
             .or_else(|_| std::env::var("HOME").map(|h| PathBuf::from(h).join(".config")))
             .unwrap_or_else(|_| PathBuf::from("."));
         path.push(app_name);
@@ -94,10 +95,15 @@ impl Settings {
     }
 
     /// 内部辅助：根据路径找到或创建对应的 Table 引用
-    fn get_mut_table<'a>(table: &'a mut toml::value::Table, path: &[&str]) -> &'a mut toml::value::Table {
+    fn get_mut_table<'a>(
+        table: &'a mut toml::value::Table,
+        path: &[&str],
+    ) -> &'a mut toml::value::Table {
         let mut current = table;
         for part in path {
-            let entry = current.entry(part.to_string()).or_insert_with(|| toml::Value::Table(toml::value::Table::new()));
+            let entry = current
+                .entry(part.to_string())
+                .or_insert_with(|| toml::Value::Table(toml::value::Table::new()));
             if !entry.is_table() {
                 *entry = toml::Value::Table(toml::value::Table::new());
             }

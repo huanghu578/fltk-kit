@@ -57,7 +57,10 @@ impl TreeHelper {
             }
             if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
                 let ext_lower = ext.to_lowercase();
-                if extensions.iter().any(|e| e.eq_ignore_ascii_case(&ext_lower)) {
+                if extensions
+                    .iter()
+                    .any(|e| e.eq_ignore_ascii_case(&ext_lower))
+                {
                     if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
                         files.push(stem.to_string());
                     }
@@ -84,7 +87,10 @@ impl TreeHelper {
             }
             if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
                 let ext_lower = ext.to_lowercase();
-                if extensions.iter().any(|e| e.eq_ignore_ascii_case(&ext_lower)) {
+                if extensions
+                    .iter()
+                    .any(|e| e.eq_ignore_ascii_case(&ext_lower))
+                {
                     // 使用 file_name 而不是 file_stem，保留扩展名
                     if let Some(name) = p.file_name().and_then(|s| s.to_str()) {
                         files.push(name.to_string());

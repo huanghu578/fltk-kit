@@ -20,8 +20,8 @@ fn main() {
         .center_screen();
 
     let mut tree = Tree::new(10, 10, 380, 480, "");
-    tree.set_show_root(true); 
-    
+    tree.set_show_root(true);
+
     // 1. 绑定基础数据
     let data = vec![
         ("ROOT".to_string(), "Fruits".to_string()),

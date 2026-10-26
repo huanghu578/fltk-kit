@@ -55,13 +55,7 @@ impl Dialogs {
         dialog::choice2(x, y, msg, "No", "Yes", "") == Some(1)
     }
 
-    pub fn choice2_center(
-        win: &Window,
-        msg: &str,
-        b0: &str,
-        b1: &str,
-        b2: &str,
-    ) -> Option<i32> {
+    pub fn choice2_center(win: &Window, msg: &str, b0: &str, b1: &str, b2: &str) -> Option<i32> {
         let (x, y) = Self::centered(win, Self::CHOICE_W, Self::CHOICE_H);
         dialog::choice2(x, y, msg, b0, b1, b2)
     }

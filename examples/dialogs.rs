@@ -6,7 +6,9 @@ use fltk_kit::Dialogs;
 
 fn main() {
     let app = app::App::default();
-    let mut wind = window::Window::default().with_size(400, 300).center_screen();
+    let mut wind = window::Window::default()
+        .with_size(400, 300)
+        .center_screen();
     let mut btn = button::Button::new(150, 130, 100, 40, "Click Me");
 
     let mut win_clone = wind.clone();
@@ -15,7 +17,7 @@ fn main() {
         if Dialogs::confirm_center(&win_clone, "Do you want to close this window?") {
             win_clone.hide();
             // 优雅退出
-            std::process::exit(0); 
+            std::process::exit(0);
         }
     });
 

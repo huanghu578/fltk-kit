@@ -2,12 +2,14 @@
 // cargo run --example form
 
 use fltk::{app, enums, frame, input, prelude::*, window};
-use fltk_table::{SmartTable, TableOpts};
 use fltk_kit::{NumberRange, Required, TableBindingExt, Text, ValidatedInput};
+use fltk_table::{SmartTable, TableOpts};
 
 fn main() {
     let app = app::App::default();
-    let mut wind = window::Window::default().with_size(600, 500).center_screen();
+    let mut wind = window::Window::default()
+        .with_size(600, 500)
+        .center_screen();
 
     // 1. 表单
     let mut name_input = input::Input::new(80, 20, 140, 25, "Name:");
@@ -16,7 +18,10 @@ fn main() {
 
     let mut age_input = input::Input::new(80, 60, 140, 25, "Age (18-99):");
     age_input.set_align(enums::Align::Left);
-    age_input.bind_validator(NumberRange { min: 18.0, max: 99.0 });
+    age_input.bind_validator(NumberRange {
+        min: 18.0,
+        max: 99.0,
+    });
 
     let mut info_frame = frame::Frame::new(20, 100, 560, 20, "");
     info_frame.set_label(&format!(

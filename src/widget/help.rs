@@ -79,7 +79,7 @@ impl HelpPage {
     /// 调用系统默认程序打开文件
     fn open_file(path: &Path) {
         let abs_path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-        
+
         // 转换为标准的 file:// URL
         // Windows 需要 file:///C:/... (三个斜杠)
         let mut url = abs_path.display().to_string().replace("\\", "/");

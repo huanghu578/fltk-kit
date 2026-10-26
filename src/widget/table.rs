@@ -26,7 +26,7 @@ impl TableBindingExt for SmartTable {
         if data.is_empty() {
             return;
         }
-        
+
         let nrows = data.len() as i32;
         let ncols = data[0].as_ref().len() as i32;
 
@@ -44,7 +44,7 @@ impl TableBindingExt for SmartTable {
                 self.set_cell_value(r as i32, c as i32, cell.as_ref());
             }
         }
-        
+
         // 自动分配列宽并重绘
         TableHelper::auto_col_widths(self, ncols);
         self.redraw();
@@ -105,7 +105,7 @@ impl TableHelper {
     pub fn fill_from_array_with_header(table: &mut SmartTable, data: &Array2<String>) {
         let nrows = data.nrows() as i32;
         let ncols = data.ncols() as i32;
-        
+
         if nrows == 0 || ncols == 0 {
             return;
         }

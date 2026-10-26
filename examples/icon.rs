@@ -9,7 +9,10 @@ const PNG_B64: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42
 
 fn main() {
     let app = app::App::default();
-    let mut wind = window::Window::default().with_size(300, 200).with_label("Icon Demo").center_screen();
+    let mut wind = window::Window::default()
+        .with_size(300, 200)
+        .with_label("Icon Demo")
+        .center_screen();
 
     // 设置窗口图标
     Icon::set_base64_png(&mut wind, PNG_B64);

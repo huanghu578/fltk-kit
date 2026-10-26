@@ -6,7 +6,9 @@ use fltk_kit::Task;
 
 fn main() {
     let app = app::App::default();
-    let mut wind = window::Window::default().with_size(400, 200).center_screen();
+    let mut wind = window::Window::default()
+        .with_size(400, 200)
+        .center_screen();
     let mut frame = frame::Frame::new(20, 20, 360, 50, "Waiting for background task...");
     frame.set_label_size(16);
 

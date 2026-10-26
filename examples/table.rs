@@ -2,8 +2,8 @@
 // cargo run --example table
 
 use fltk::{app, prelude::*, window};
-use fltk_table::{SmartTable, TableOpts};
 use fltk_kit::widget::table::{TableBindingExt, TableHelper};
+use fltk_table::{SmartTable, TableOpts};
 use ndarray::Array2;
 
 fn main() {
@@ -32,10 +32,10 @@ fn main() {
             editable: false,
             ..Default::default()
         });
-    
+
     // 强制关闭行头，并关闭默认列头（这样不会显示A, B, C）
     table1.set_row_header(false);
-    table1.set_col_header(false); 
+    table1.set_col_header(false);
     // 告诉底层，我们不需要行头标签
     table1.set_row_header_width(0);
 
@@ -67,7 +67,7 @@ fn main() {
     array_with_header[[1, 0]] = "a.dwg".to_string();
     array_with_header[[1, 1]] = "2.5 MB".to_string();
     array_with_header[[1, 2]] = "CAD".to_string();
-    
+
     array_with_header[[2, 0]] = "a.dxf".to_string();
     array_with_header[[2, 1]] = "1.8 MB".to_string();
     array_with_header[[2, 2]] = "CAD".to_string();

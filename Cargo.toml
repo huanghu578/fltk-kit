@@ -1,6 +1,6 @@
 [package]
 name = "fltk-kit"
-version = "0.2.0"
+version = "0.4.0"
 edition = "2021"
 description = "Reusable, high-level utilities and boilerplate reducers for fltk-rs applications."
 license = "MIT OR Apache-2.0"
@@ -8,96 +8,15 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 fltk = "1.5.23"
 fltk-table = "0.1"
-ndarray = "0.15"
-once_cell = "1.19"
-
-# 这些不再 optional，因为核心模块已经深度依赖它们
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
-
-# 可选依赖
-notify = { version = "6.1", optional = true }
-base64 = { version = "0.22", optional = true }
-cargo_metadata = "0.18"
-
-[target.'cfg(windows)'.dependencies]
-tray-icon = { version = "0.24", optional = true }
-image = { version = "0.25", default-features = false, features = ["png", "ico", "jpeg", "bmp"], optional = true }
+base64 = "0.22"
+ndarray = "0.17.2"
+once_cell = "1.21.4"
 
 [build-dependencies]
-cargo_metadata = "0.18"
-tauri-winres = { version = "0.1", optional = true }
+winres = "0.1"
 
 [features]
 default = []
-full = ["persist", "fs-watch", "icon", "tray"]
-# 因为 serde 和 toml 已经是默认依赖，persist feature 不需要再声明依赖
-persist = [] 
-fs-watch = ["dep:notify"]
-icon = ["dep:base64"]
-tray = ["dep:tray-icon", "dep:image"]
-exe-icon = ["dep:tauri-winres"]
-# ==========================================
-# 示例配置
-# ==========================================
-
-[[example]]
-name = "basic"
-path = "examples/basic.rs"
-
-[[example]]
-name = "layout"
-path = "examples/layout.rs"
-
-[[example]]
-name = "form"
-path = "examples/form.rs"
-
-[[example]]
-name = "dialogs"
-path = "examples/dialogs.rs"
-
-[[example]]
-name = "async_channel"
-path = "examples/async_channel.rs"
-
-[[example]]
-name = "i18n"
-path = "examples/i18n.rs"
-
-[[example]]
-name = "tree"
-path = "examples/tree.rs"
-
-[[example]]
-name = "table"
-path = "examples/table.rs"
-
-[[example]]
-name = "about_page"
-path = "examples/about_page.rs"
-
-[[example]]
-name = "spinner"
-path = "examples/spinner.rs"
-
-# 带条件特性的示例
-[[example]]
-name = "fs_watch"
-path = "examples/fs_watch.rs"
-required-features = ["fs-watch"]
-
-[[example]]
-name = "persist"
-path = "examples/persist.rs"
-required-features = ["persist"]
-
-[[example]]
-name = "icon"
-path = "examples/icon.rs"
-required-features = ["icon"]
-
-[[example]]
-name = "tray"
-path = "examples/tray.rs"
-required-features = ["tray"]
+# Windows 托盘需要额外的依赖，但考虑到极简，我们这里不引入托盘，仅支持 exe 和窗口图标
