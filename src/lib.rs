@@ -26,6 +26,7 @@ pub use crate::widget::windows::Windows; // <-- 新增 // <-- 新增
 pub use crate::widget::form_ext::ValidatedInput;
 pub use crate::widget::table::TableBindingExt;
 pub use crate::widget::tree::TreeBindingExt;
+pub use crate::widget::layout_ext::RectExt;
 
 // Async Exports
 pub use crate::async_kit::channel::{Channel, Sender};
