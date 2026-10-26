@@ -1,13 +1,13 @@
 [package]
 name = "fltk-kit"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 description = "Reusable, high-level utilities and boilerplate reducers for fltk-rs applications."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/huanghu578/fltk-kit"
 homepage = "https://github.com/huanghu578/fltk-kit"
 documentation = "https://docs.rs/fltk-kit"
-readme = "README.md"
+
 
 # 🌟 优化：最多5个，全小写，精准描述桌面 GUI 基建库
 keywords = ["fltk", "gui", "desktop", "layout", "async"]

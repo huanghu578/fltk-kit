@@ -20,7 +20,7 @@ FLTK is incredibly fast and lightweight, but it requires a lot of boilerplate fo
 Add `fltk-kit` to your `Cargo.toml`:
 ```toml
 [dependencies]
-fltk-kit = "0.5.1"
+fltk-kit = "0.5.2"
 ```
 Exe Icons (Windows)
 To set your .exe icon, add a build.rs in your project root:
