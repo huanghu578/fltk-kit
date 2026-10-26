@@ -18,10 +18,9 @@ pub use crate::widget::auto_page::AutoPage;
 pub use crate::widget::dialogs::Dialogs;
 pub use crate::widget::fonts::Fonts;
 pub use crate::widget::help::HelpPage;
-pub use crate::widget::icon::Icon;
 pub use crate::widget::spinner::Spinner;
 pub use crate::widget::windows::Windows; // <-- 新增 // <-- 新增
-
+pub use crate::widget::icon::Icon;
 // Trait Exports
 pub use crate::widget::form_ext::ValidatedInput;
 pub use crate::widget::table::TableBindingExt;
