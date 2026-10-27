@@ -18,7 +18,7 @@ fn main() {
     // ==========================================
     // 1. 加载配置与首次运行判断
     // ==========================================
-    let mut settings = Settings::load("my_app");
+    let mut settings = Settings::load("my_app","setting.toml");
 
     if settings.is_new() {
         println!("[首次运行] 正在生成默认配置...");

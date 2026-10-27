@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Settings {
@@ -16,15 +16,29 @@ pub struct Settings {
 }
 
 impl Settings {
-    /// Loads settings from the user's config directory.
-    /// C:\Users\Administrator\AppData\Roaming\my_app\settings.toml
-    pub fn load(app_name: &str) -> Self {
+    /// 🌟 核心加载器：加载指定应用目录下的指定 TOML 文件。
+    /// 自动处理 Windows (`AppData/Roaming`) 和 macOS/Linux (`~/.config`) 路径。
+    /// 
+    /// # Examples
+    /// ```ignore
+    /// let ui_cfg = Settings::load("MyApp", "ui.toml");
+    /// let cad_cfg = Settings::load("MyApp", "cad.toml");
+    /// ```
+    pub fn load(app_name: &str, toml_name: &str) -> Self {
         let mut path = std::env::var("APPDATA")
             .map(PathBuf::from)
             .or_else(|_| std::env::var("HOME").map(|h| PathBuf::from(h).join(".config")))
             .unwrap_or_else(|_| PathBuf::from("."));
         path.push(app_name);
-        path.push("settings.toml");
+        path.push(toml_name);
+
+        Self::load_from_path(path)
+    }
+
+    /// 加载指定的绝对路径或相对路径。
+    /// 适用于单程序多配置文件，或者绿色软件（配置跟随 exe）。
+    pub fn load_from_path<P: AsRef<Path>>(path: P) -> Self {
+        let path = path.as_ref().to_path_buf();
 
         let (data, is_new) = if let Ok(content) = fs::read_to_string(&path) {
             (toml::from_str(&content).unwrap_or_default(), false)
