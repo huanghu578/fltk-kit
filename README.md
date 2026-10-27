@@ -129,7 +129,7 @@ A robust TOML configuration manager supporting nested keys, arrays, and default 
 ```rust
 use fltk_kit::Settings;
 
-let mut settings = Settings::load("my_app");
+let mut settings = Settings::load("my_app","setting.toml");
 if settings.is_new() {
     settings.set_default("window.width", 800);
     settings.set_default("recent_files", vec!["a.txt", "b.txt"]);
