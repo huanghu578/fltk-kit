@@ -1,6 +1,6 @@
 [package]
 name = "fltk-kit"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2021"
 description = "Reusable, high-level utilities and boilerplate reducers for fltk-rs applications."
 license = "MIT OR Apache-2.0"
@@ -8,10 +8,7 @@ repository = "https://github.com/huanghu578/fltk-kit"
 homepage = "https://github.com/huanghu578/fltk-kit"
 documentation = "https://docs.rs/fltk-kit"
 readme = "README.md"
-
-# 🌟 优化：最多5个，全小写，精准描述桌面 GUI 基建库
 keywords = ["fltk", "gui", "desktop", "layout", "async"]
-# 🌟 优化：必须使用 crates.io 官方的分类
 categories = ["gui", "development-tools"]
 
 [dependencies]
@@ -22,6 +19,7 @@ toml = "0.8"
 base64 = "0.22"
 ndarray = "0.17.2"
 once_cell = "1.21.4"
+fltk-webview = "0.4.7"
 
 [build-dependencies]
 winres = "0.1"

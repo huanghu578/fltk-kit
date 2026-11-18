@@ -37,24 +37,39 @@ impl I18n {
     /// Initializes i18n from the given path (e.g., "i18n.toml").
     /// If the file does not exist, a generic template will be generated.
     /// If parsing fails, an empty config is used to prevent crashes.
+    ///
+    /// 语言决策规则：
+    /// - 文件存在且 `current` 非空 → 使用文件中的用户指定语言（不覆盖）。
+    /// - 文件存在但 `current` 为空 → 使用操作系统语言，并立即写回磁盘。
+    /// - 文件不存在 → 生成模板，`current` 取操作系统语言，并写盘。
     pub fn init(path: &str) {
         let path_buf = PathBuf::from(path);
 
-        let config = match fs::read_to_string(&path_buf) {
+        let (config, need_save) = match fs::read_to_string(&path_buf) {
             Ok(content) => {
                 // 解析失败则降级为空配置，绝不 panic
-                toml::from_str(&content).unwrap_or_else(|e| {
-                    eprintln!("⚠️ Failed to parse i18n.toml: {}. Using empty config.", e);
-                    Self::generic_config()
-                })
+                match toml::from_str::<I18nConfig>(&content) {
+                    Ok(mut cfg) => {
+                        // 关键：已存在文件但 current 为空时，补系统语言并写回
+                        if cfg.current.trim().is_empty() {
+                            cfg.current = Self::detect_os_language(&cfg.languages);
+                            (cfg, true)
+                        } else {
+                            (cfg, false)
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!(
+                            "⚠️ Failed to parse i18n.toml: {}. Using empty config.",
+                            e
+                        );
+                        (Self::generic_config(), true)
+                    }
+                }
             }
             Err(_) => {
-                // 文件不存在，生成一个空白的通用模板并写入磁盘
-                let cfg = Self::generic_config();
-                if let Ok(toml_str) = toml::to_string_pretty(&cfg) {
-                    let _ = fs::write(&path_buf, toml_str);
-                }
-                cfg
+                // 文件不存在，生成通用模板（current 已按系统语言填充）并写盘
+                (Self::generic_config(), true)
             }
         };
 
@@ -63,25 +78,70 @@ impl I18n {
             path: path_buf,
         };
 
+        // 需要落盘时先写（此时 manager 还未进入全局锁，直接调用辅助函数）
+        if need_save {
+            Self::save_to_disk(&manager);
+        }
+
         // 忽略锁中毒，保证稳健性
         if let Ok(mut lock) = MANAGER.write() {
             *lock = Some(manager);
         }
     }
 
-    /// Generates a generic, empty template.
-    /// Developers should fill in the translations manually in the generated file.
+    /// 生成通用模板。`current` 会优先采用操作系统语言，
+    /// 若系统语言不在支持列表内则回退到 "en"。
     fn generic_config() -> I18nConfig {
-        let mut translations = HashMap::new();
+        let languages = vec!["en".to_string(), "zh-CN".to_string()];
+        let current = Self::detect_os_language(&languages);
 
-        // 默认只有语言代码，没有任何具体的业务键
+        let mut translations = HashMap::new();
         translations.insert("en".to_string(), HashMap::new());
         translations.insert("zh-CN".to_string(), HashMap::new());
 
         I18nConfig {
-            current: "en".to_string(),
-            languages: vec!["en".to_string(), "zh-CN".to_string()],
+            current,
+            languages,
             translations,
+        }
+    }
+
+    /// 探测操作系统语言并映射到支持列表中的语言代码。
+    /// 匹配失败时返回 "en" 作为兜底。
+    fn detect_os_language(supported: &[String]) -> String {
+        // sys-locale 返回形如 "zh-CN" / "zh_CN" / "zh-Hans-CN" / "en-US" 的字符串
+        let raw = sys_locale::get_locale().unwrap_or_default();
+        if raw.is_empty() {
+            return Self::fallback_language(supported);
+        }
+
+        // 1. 精确匹配（忽略大小写与 '-'/'_' 差异）
+        let normalized = raw.replace('_', "-").to_lowercase();
+        for lang in supported {
+            if lang.replace('_', "-").to_lowercase() == normalized {
+                return lang.clone();
+            }
+        }
+
+        // 2. 按主语言子标签匹配（如 "zh-Hans-CN" → "zh" → 命中 "zh-CN"）
+        let primary = normalized.split('-').next().unwrap_or("");
+        for lang in supported {
+            let lang_norm = lang.replace('_', "-").to_lowercase();
+            if lang_norm.split('-').next() == Some(primary) {
+                return lang.clone();
+            }
+        }
+
+        // 3. 兜底
+        Self::fallback_language(supported)
+    }
+
+    /// 支持列表里优先 "en"，否则取第一个。
+    fn fallback_language(supported: &[String]) -> String {
+        if supported.iter().any(|l| l == "en") {
+            "en".to_string()
+        } else {
+            supported.first().cloned().unwrap_or_else(|| "en".to_string())
         }
     }
 
@@ -103,9 +163,13 @@ impl I18n {
     pub fn current_language() -> String {
         if let Ok(lock) = MANAGER.read() {
             if let Some(manager) = lock.as_ref() {
-                return manager.config.current.clone();
+                let cur = manager.config.current.clone();
+                if !cur.trim().is_empty() {
+                    return cur;
+                }
             }
         }
+        // 全局未初始化或 current 为空时的兜底
         "en".to_string()
     }
 
