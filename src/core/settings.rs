@@ -18,12 +18,6 @@ pub struct Settings {
 impl Settings {
     /// 🌟 核心加载器：加载指定应用目录下的指定 TOML 文件。
     /// 自动处理 Windows (`AppData/Roaming`) 和 macOS/Linux (`~/.config`) 路径。
-    /// 
-    /// # Examples
-    /// ```ignore
-    /// let ui_cfg = Settings::load("MyApp", "ui.toml");
-    /// let cad_cfg = Settings::load("MyApp", "cad.toml");
-    /// ```
     pub fn load(app_name: &str, toml_name: &str) -> Self {
         let mut path = std::env::var("APPDATA")
             .map(PathBuf::from)

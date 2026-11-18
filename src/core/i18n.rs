@@ -59,10 +59,7 @@ impl I18n {
                         }
                     }
                     Err(e) => {
-                        eprintln!(
-                            "⚠️ Failed to parse i18n.toml: {}. Using empty config.",
-                            e
-                        );
+                        eprintln!("⚠️ Failed to parse i18n.toml: {}. Using empty config.", e);
                         (Self::generic_config(), true)
                     }
                 }
@@ -141,7 +138,10 @@ impl I18n {
         if supported.iter().any(|l| l == "en") {
             "en".to_string()
         } else {
-            supported.first().cloned().unwrap_or_else(|| "en".to_string())
+            supported
+                .first()
+                .cloned()
+                .unwrap_or_else(|| "en".to_string())
         }
     }
 

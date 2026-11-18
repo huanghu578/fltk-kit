@@ -2,9 +2,9 @@
 //!
 //! Reusable, high-level utilities and boilerplate reducers for [`fltk-rs`] applications.
 //!
-//! FLTK is incredibly fast and lightweight, but it requires a lot of boilerplate for modern 
+//! FLTK is incredibly fast and lightweight, but it requires a lot of boilerplate for modern
 //! desktop app development. `fltk-kit` fills these gaps without forcing you into a heavy framework.
-//! It handles the painful parts: responsive layouts, CJK fonts, centered dialogs, thread-safe 
+//! It handles the painful parts: responsive layouts, CJK fonts, centered dialogs, thread-safe
 //! async updates, and cross-platform file handling.
 //!
 //! ## Features
@@ -34,12 +34,11 @@
 //!     let mut win = Windows::create_maximized(600, 400, "Layout Demo");
 //!
 //!     let mut page = AutoPage::new(0, 0, 600, 400, "");
-//!     page.set_top(20);
 //!     page.group().begin();
 //!
 //!     let mut btn = button::Button::new(0, 0, 0, 0, "Click");
 //!     let mut text = TextDisplay::new(0, 0, 0, 0, "Stretches automatically.");
-//!     page.group().end(); 
+//!     page.group().end();
 //!     page.finish();
 //!
 //!     page.on_layout(move |content: Rect| {
@@ -78,10 +77,9 @@ pub use crate::core::validator::{NumberRange, Required, ValidationError, Validat
 pub use crate::widget::auto_page::AutoPage;
 pub use crate::widget::dialogs::Dialogs;
 pub use crate::widget::fonts::Fonts;
-pub use crate::widget::help::HelpPage;
+pub use crate::widget::icon::Icon;
 pub use crate::widget::spinner::Spinner;
 pub use crate::widget::windows::Windows;
-pub use crate::widget::icon::Icon;
 
 // ==========================================
 // Trait Exports

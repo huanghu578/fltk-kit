@@ -1,11 +1,11 @@
 //! Extension trait to apply `Rect` to widgets.
-use fltk::prelude::*;
 use crate::core::rect::Rect;
+use fltk::prelude::*;
 
 pub trait RectExt {
     /// 完全应用 Rect 的坐标和尺寸
     fn apply_rect(&mut self, r: Rect);
-    
+
     /// 仅应用尺寸，保持原有坐标不变
     fn apply_size(&mut self, r: Rect);
 }
