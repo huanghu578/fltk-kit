@@ -19,10 +19,17 @@ pub struct Icon;
 
 impl Icon {
     /// Set a window icon from embedded PNG bytes.
+    ///
+    /// NOTE: FLTK's `set_icon` only stores the image pointer without
+    /// copying it. The decoded image must therefore outlive the window,
+    /// so we leak it (`mem::forget`) — dropping the Rust wrapper here
+    /// would delete the underlying C++ object and leave the window with
+    /// a dangling pointer (use-after-free -> STATUS_ACCESS_VIOLATION).
     pub fn set_embd_png(window: &mut Window, data: &[u8]) -> bool {
         match PngImage::from_data(data) {
             Ok(img) => {
-                window.set_icon(Some(img));
+                window.set_icon(Some(img.clone()));
+                std::mem::forget(img); // 泄漏：图标需与窗口同寿命
                 true
             }
             Err(_) => false,
@@ -30,10 +37,13 @@ impl Icon {
     }
 
     /// Set a window icon from embedded ICO bytes.
+    ///
+    /// NOTE: same lifetime fix as `set_embd_png` — see the comment there.
     pub fn set_embd_ico(window: &mut Window, data: &[u8]) -> bool {
         match IcoImage::from_data(data) {
             Ok(img) => {
-                window.set_icon(Some(img));
+                window.set_icon(Some(img.clone()));
+                std::mem::forget(img); // 泄漏：图标需与窗口同寿命
                 true
             }
             Err(_) => false,
@@ -60,12 +70,10 @@ impl Icon {
         let Ok(mut img) = PngImage::from_data(&bytes) else {
             return false;
         };
-
         let (fw, fh) = (frame.w(), frame.h());
         if fw <= 0 || fh <= 0 {
             return false;
         }
-
         // Scale preserving aspect ratio, fit inside the frame.
         let (iw, ih) = (img.width(), img.height());
         if iw <= 0 || ih <= 0 {
@@ -77,9 +85,8 @@ impl Icon {
             (ih as f64 * scale).max(1.0) as i32,
         );
         img.scale(nw, nh, true, true);
-
         frame.set_label("");
-        // SharedImage::from_image 需要引用
+        // SharedImage::from_image 内部会持有自己的副本，img 随后 drop 是安全的
         let Ok(shared) = SharedImage::from_image(&img) else {
             return false;
         };
